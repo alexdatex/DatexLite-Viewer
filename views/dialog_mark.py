@@ -25,15 +25,10 @@ class MarkDialog(Toplevel):
         self.setup_ui()
         self.selected_mark_image_id = None
 
-        if (point_mark == None and mark_id != None):
-            mark = self.controller.get_mark(mark_id)
-            logging.info(
-                f"Открытие диалога показа деталей метки ID: {mark_id} (Координаты x: {mark.x:4d}, {mark.y:4d} )")
-            self.point_mark = (mark.x, mark.y)
-        else:
-            logging.info(
-                f"Открытие диалога добавления деталей НОВОЙ метки (Координаты x: {point_mark[0]:4d}, {point_mark[1]:4d} )")
-            self.point_mark = point_mark
+        mark = self.controller.get_mark(mark_id)
+        logging.info(
+            f"\t\tОткрытие диалога показа деталей метки ID: {mark_id} (Координаты x: {mark.x:4d}, {mark.y:4d} )")
+        self.point_mark = (mark.x, mark.y)
 
         if mark_id:
             parent.after(100, self.fill_form)
@@ -99,41 +94,6 @@ class MarkDialog(Toplevel):
 
         ttk.Button(button_frame, text="Закрыть", command=self.destroy).pack(side="left", padx=5)
 
-    def save(self):
-        if self.mark_id:
-            mark_data = {
-                'name': self.entries["name"].get(),
-                'description': self.entries["description"].get(),
-                'spare_parts': self.spare_parts_var.get()
-            }
-            self.controller.update_mark(self.mark_id, mark_data)
-            self.parent2.update_mark_information()
-        else:
-            x, y = self.point_mark
-            mark_data = {
-                'name': self.entries["name"].get(),
-                'description': self.entries["description"].get(),
-                'schema_id': self.schema_id,
-                'x': x,
-                'y': y,
-                'spare_parts': self.spare_parts_var.get(),
-                'user_id': self.parent2.user_id
-            }
-            mark = self.controller.add_mark(mark_data)
-            self.mark_id = mark.id
-            self.parent2.add_mark(mark.id)
-
-
-        for key, item in self.tmpMarks.items():
-            if self.mark_id:
-                item['mark_id'] = self.mark_id
-            self.controller.add_mark_image(item)
-
-        for mark_image_id in self.list_id_mark_images_for_delete:
-            self.controller.delete_mark_image(mark_image_id)
-
-        self.destroy()
-
     def create_left_panel(self):
         self.left_panel = ttk.Frame(self.paned_window, width=150)
         self.paned_window.add(self.left_panel, minsize=150)
@@ -184,12 +144,20 @@ class MarkDialog(Toplevel):
         mark = self.controller.get_mark(self.mark_id)
         mark_images = self.controller.get_mark_images(self.mark_id)
 
+        logging.info(f"\t\t\tДля метки {self.mark_id} получено {len(mark_images)} изображений")
+        for element in mark_images:
+            if element.data is None:
+                logging.info(f"\t\t\t\t {element.id} : '{element.description}' : (None)")
+            else:
+                logging.info(f"\t\t\t\t {element.id} : '{element.description}' : {len(element.data)} байт")
+
         self.text_entries["name"].set(mark.name)
         self.text_entries["description"].set(mark.description)
         self.spare_parts_var.set(mark.spare_parts)
 
         for item in self.marks_list.get_children():
             self.marks_list.delete(item)
+
         if len(mark_images) > 0:
             for item in mark_images:
                 self.marks_list.insert("", tk.END, values=(item.id, mark.name, item.description))
@@ -198,77 +166,8 @@ class MarkDialog(Toplevel):
             self.marks_list.selection_set(first_item)
             self.marks_list.focus(first_item)
 
-    def delete_image(self):
-        self.image_comment_text.config(state=NORMAL)
-        self.image_comment_text.delete(1.0, tk.END)
-        self.image_comment_text.config(state=DISABLED)
-        self.delete_mark_image_btn.config(state=DISABLED)
-
-        selected_item = self.marks_list.selection()
-        if selected_item:  # если что-то выделено
-            item = self.marks_list.item(selected_item)
-            mark_id = item['values'][0]
-
-            if mark_id < 0:
-                del self.tmpMarks[mark_id]
-            else:
-                self.list_id_mark_images_for_delete.append(mark_id)
-            self.marks_list.delete(selected_item[0])
-            self.clear_image_display()
-            if self.marks_list.get_children():
-                first_item = self.marks_list.get_children()[0]
-                self.marks_list.selection_set(first_item)
-                self.marks_list.focus(first_item)
-
-
-    def add_image(self):
-        file_path = filedialog.askopenfilename(
-            parent=self,
-            title="Выберите изображение",
-            filetypes=(
-                ("Изображения", "*.jpg *.jpeg *.png *.gif *.bmp"),
-            )
-        )
-        if file_path:
-            try:
-                with open(file_path, 'rb') as f:
-                    file_data = f.read()
-                    name = os.path.basename(file_path)
-
-            except Exception as e:
-                messagebox.showerror("Ошибка", f"Ошибка добавление файла: {e}", parent=self)
-
-            dialog = self.ask_multi_line_input(
-                title="Введите текст",
-                prompt="Пожалуйста, введите ваш текст (10 строк):",
-                width=60,
-                height=15
-            )
-
-            if dialog:
-                description = dialog
-            else:
-                description = ""
-
-            if self.mark_id:
-                logging.info(f"Добавление изображения к метке {self.mark_id} файл {str(Path(file_path).absolute())}")
-            else:
-                logging.info(f"Добавление изображения к новой метке файл {str(Path(file_path).absolute())}")
-
-            mark_data = {
-                'name': name,
-                'data': resize_image_to_width(file_data),
-                'description': description,
-                'mark_id': self.mark_id,
-                'user_id': self.user_id
-            }
-
-            tmp_id = -self.tmp_image_id - 1
-            self.tmpMarks[tmp_id] = mark_data
-            self.tmp_image_id += 1
-            self.marks_list.insert("", tk.END, values=(tmp_id, mark_data['name'], mark_data['description']))
-
     def on_mark_image_select(self, event):
+
         selected_item = self.marks_list.selection()
         if selected_item:
             item = self.marks_list.item(selected_item)
@@ -276,28 +175,26 @@ class MarkDialog(Toplevel):
             self.update_mark_image_info(mark_id)
 
     def update_mark_image_info(self, mark_id):
+        logging.info(f"\t\t\t\tВыбрано изображение {mark_id} для метки {self.mark_id} ")
         self.selected_mark_image_id = mark_id
-        if mark_id < 0:
-            tmp_mark = self.tmpMarks[mark_id]
-            self.image_comment_text.config(state=NORMAL)
-            self.image_comment_text.delete(1.0, tk.END)
-            self.image_comment_text.insert(tk.END, tmp_mark['description'])
-            self.image_comment_text.config(state=DISABLED)
 
-            data = tmp_mark['data']
-        else:
-            item = self.controller.get_mark_image(mark_id)
-            self.image_comment_text.config(state=NORMAL)
-            self.image_comment_text.delete(1.0, tk.END)
-            self.image_comment_text.insert(tk.END, item.description)
-            self.image_comment_text.config(state=DISABLED)
+        item = self.controller.get_mark_image(mark_id)
+        self.image_comment_text.config(state=NORMAL)
+        self.image_comment_text.delete(1.0, tk.END)
+        self.image_comment_text.insert(tk.END, item.description)
+        self.image_comment_text.config(state=DISABLED)
 
-            data = item.data
+        data = item.data
 
         self.display_image(data)
 
     def display_image(self, image_data):
         self.clear_image_display()
+        if image_data:
+            logging.info(f"\t\t\t\t\tПоказ картинки: размер {len(image_data)}")
+        else:
+            logging.info(f"\t\t\t\t\tПоказ картинки: Изображения нет")
+            return
 
         try:
             image = Image.open(io.BytesIO(image_data))
@@ -319,7 +216,7 @@ class MarkDialog(Toplevel):
             self.image_canvas.image = photo  # Keep a reference
             self.image_canvas.create_image(x, y, image=photo, anchor=tk.NW)
         except Exception as e:
-            logging.info(f"Error displaying image: {e}")
+            logging.info(f"\t\t\t\t\tОшибка отображения картинки {self.selected_mark_image_id} для метки {self.mark_id} : {e}")
 
     def clear_image_display(self):
         self.image_canvas.delete("all")

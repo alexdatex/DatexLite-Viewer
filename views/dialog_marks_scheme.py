@@ -35,7 +35,7 @@ class SchemeDialog(Toplevel):
         self.original_image = None
         self.setup_ui()
 
-        logging.info(f"Открытие диалога показа меток для схемы с ID: {schema_id}")
+        logging.info(f"\tОткрытие диалога показа меток для схемы с ID: {schema_id}")
 
         if schema_id:
             parent.after(100, self.load_data)
@@ -298,7 +298,7 @@ class SchemeDialog(Toplevel):
 
     def show_image(self, image_data):
         self.clear_image_display()
-
+        logging.info(f"\t\tПоказ картинки cхемы с метками")
         try:
             img_width, img_height = image_data.size
 
@@ -315,7 +315,7 @@ class SchemeDialog(Toplevel):
             self.canvas.image = photo  # Keep a reference
             self.canvas.create_image(x, y, image=photo, anchor=tk.NW)
         except Exception as e:
-            print(f"Error displaying image: {e}")
+            logging.info(f"Ошибка при показе картинки: {e}")
 
     def clear_image_display(self):
         self.canvas.delete("all")
