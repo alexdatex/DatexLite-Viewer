@@ -1,0 +1,15 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+.idea/
+.run/
+logs/
+
+datex_lite.db
+settings.ini
+/build/
+/dist/
+*.ini
+*.db
+*.7z
+/version_info.txt
+/DatexLite.exe.spec
