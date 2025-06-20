@@ -8,7 +8,7 @@ from configparser import ConfigParser
 from pathlib import Path
 from tkinter import ttk, messagebox, DISABLED
 
-from PIL import ImageTk
+from PIL import Image, ImageTk
 
 from constants.constants import INI_FILE
 from constants.icons import image
@@ -34,7 +34,7 @@ class DatexLite:
     def _setup_auth_window(self) -> None:
         """Настройка окна авторизации."""
         self.root.title("Авторизация")
-        self.root.geometry("300x200")
+        self.root.geometry("350x300")
         self.root.resizable(False, False)
 
     def _init_db_connection(self) -> None:
@@ -60,6 +60,13 @@ class DatexLite:
         self.center_window(self.root)
 
         main_frame = self._create_main_frame()
+
+        icon_photo = ImageTk.PhotoImage(image)
+
+        # Сохраняем ссылку, чтобы изображение не удалилось
+
+        self.root.iconphoto(False, icon_photo)
+
         self._create_login_fields(main_frame)
         self._create_login_button(main_frame)
         self._configure_grid_layout(main_frame)
@@ -87,14 +94,33 @@ class DatexLite:
     def _create_login_fields(self, parent: ttk.Frame) -> None:
         """Создание полей для ввода логина и пароля."""
         # Поле логина
-        ttk.Label(parent, text="Логин:").grid(row=0, column=0, sticky=tk.W)
+        if hasattr(sys, '_MEIPASS'):
+            # В режиме исполнения EXE (PyInstaller)
+            base_path = sys._MEIPASS
+        else:
+            # В режиме разработки
+            base_path = os.path.dirname(os.path.abspath(__file__))
+
+        image_path = os.path.join(base_path, "logo.jpg")
+
+        # Открываем изображение с помощью Pillow
+        img = Image.open(image_path)
+        img = img.resize((300, 125), Image.Resampling.LANCZOS)
+        photo = ImageTk.PhotoImage(img)
+
+        # Создаем метку для изображения и размещаем в сетке
+        image_label = ttk.Label(parent, image=photo)
+        image_label.image = photo  # сохраняем ссылку
+        image_label.grid(row=0, column=0, columnspan=2, pady=10)
+
+        ttk.Label(parent, text="Логин:").grid(row=1, column=0, sticky=tk.W)
         self.login_entry = ttk.Entry(parent)
-        self.login_entry.grid(row=0, column=1, pady=5, sticky=tk.EW)
+        self.login_entry.grid(row=1, column=1, pady=5, sticky=tk.EW)
 
         # Поле пароля
-        ttk.Label(parent, text="Пароль:").grid(row=1, column=0, sticky=tk.W)
+        ttk.Label(parent, text="Пароль:").grid(row=2, column=0, sticky=tk.W)
         self.password_entry = ttk.Entry(parent, show="*")
-        self.password_entry.grid(row=1, column=1, pady=5, sticky=tk.EW)
+        self.password_entry.grid(row=2, column=1, pady=5, sticky=tk.EW)
         self.password_entry.bind("<Return>", lambda e: self.check_credentials())
 
     def _create_login_button(self, parent: ttk.Frame) -> None:
@@ -104,7 +130,7 @@ class DatexLite:
             text="Войти",
             command=self.check_credentials
         )
-        login_btn.grid(row=2, column=0, columnspan=2, pady=10)
+        login_btn.grid(row=3, column=0, columnspan=2, pady=10)
 
     def _configure_grid_layout(self, frame: ttk.Frame) -> None:
         """Конфигурация сетки layout."""
