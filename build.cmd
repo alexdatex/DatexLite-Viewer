@@ -28,7 +28,7 @@ call :delete_file "%app_name%.exe.spec"
 
 call :generate_version
 
-pyinstaller --clean --onedir --windowed --target-arch x86_64 --icon=%icon_file% --version-file=version_info.txt --name %app_name%.exe main.py
+pyinstaller --clean --onedir --windowed --target-arch x86_64 --icon=%icon_file% --version-file=version_info.txt --add-data "logo.jpg;." --name %app_name%.exe main.py
 
 call :package_application
 call :package_application_with_db
